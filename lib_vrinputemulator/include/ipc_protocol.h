@@ -4,7 +4,7 @@
 #include <utility>
 
 
-#define IPC_PROTOCOL_VERSION 1
+#define IPC_PROTOCOL_VERSION 3
 
 namespace vrinputemulator {
 namespace ipc {
@@ -49,7 +49,13 @@ enum class RequestType : uint32_t {
 	DeviceManipulation_MotionCompensationMode,
 	DeviceManipulation_FakeDisconnectedMode,
 	DeviceManipulation_TriggerHapticPulse,
-	DeviceManipulation_SetMotionCompensationProperties
+	DeviceManipulation_SetMotionCompensationProperties,
+
+	InputRemapping_SetDigitalRemapping,
+	InputRemapping_GetDigitalRemapping,
+	InputRemapping_SetAnalogRemapping,
+	InputRemapping_GetAnalogRemapping,
+	InputRemapping_SetTouchpadEmulationFixEnabled
 };
 
 
@@ -68,7 +74,10 @@ enum class ReplyType : uint32_t {
 	VirtualDevices_AddDevice,
 
 	DeviceManipulation_GetDeviceInfo,
-	DeviceManipulation_GetDeviceOffsets
+	DeviceManipulation_GetDeviceOffsets,
+
+	InputRemapping_GetDigitalRemapping,
+	InputRemapping_GetAnalogRemapping
 };
 
 
@@ -83,7 +92,8 @@ enum class ReplyStatus : uint32_t {
 	TooManyDevices,
 	InvalidVersion,
 	MissingProperty,
-	InvalidOperation
+	InvalidOperation,
+	NotTracking
 };
 
 
@@ -264,7 +274,7 @@ struct Request_DeviceManipulation_MotionCompensationMode {
 	uint32_t clientId;
 	uint32_t messageId; // Used to associate with Reply
 	uint32_t deviceId;
-	uint32_t velAccCompensationMode;
+	MotionCompensationVelAccMode velAccCompensationMode;
 };
 
 struct Request_DeviceManipulation_TriggerHapticPulse {
@@ -279,8 +289,52 @@ struct Request_DeviceManipulation_TriggerHapticPulse {
 struct Request_DeviceManipulation_SetMotionCompensationProperties {
 	uint32_t clientId;
 	uint32_t messageId; // Used to associate with Reply
-	uint32_t velAccCompensationMode;
+	bool velAccCompensationModeValid;
+	MotionCompensationVelAccMode velAccCompensationMode;
+	bool kalmanFilterProcessNoiseValid;
+	double kalmanFilterProcessNoise;
+	bool kalmanFilterObservationNoiseValid;
+	double kalmanFilterObservationNoise;
+	bool movingAverageWindowValid;
+	unsigned movingAverageWindow;
 };
+
+struct Request_InputRemapping_SetDigitalRemapping {
+	uint32_t clientId;
+	uint32_t messageId; // Used to associate with Reply
+	uint32_t controllerId;
+	uint32_t buttonId;
+	DigitalInputRemapping remapData;
+};
+
+struct Request_InputRemapping_GetDigitalRemapping {
+	uint32_t clientId;
+	uint32_t messageId; // Used to associate with Reply
+	uint32_t controllerId;
+	uint32_t buttonId;
+};
+
+struct Request_InputRemapping_SetAnalogRemapping {
+	uint32_t clientId;
+	uint32_t messageId; // Used to associate with Reply
+	uint32_t controllerId;
+	uint32_t axisId;
+	AnalogInputRemapping remapData;
+};
+
+struct Request_InputRemapping_GetAnalogRemapping {
+	uint32_t clientId;
+	uint32_t messageId; // Used to associate with Reply
+	uint32_t controllerId;
+	uint32_t axisId;
+};
+
+struct Request_InputRemapping_SetTouchpadEmulationFixEnabled {
+	uint32_t clientId;
+	uint32_t messageId; // Used to associate with Reply
+	bool enable;
+};
+
 
 
 struct Request {
@@ -296,7 +350,7 @@ struct Request {
 
 	RequestType type = RequestType::None;
 	int64_t timestamp = 0; // milliseconds since epoch
-	union {
+	union MsgUnion {
 		Request_IPC_ClientConnect ipc_ClientConnect;
 		Request_IPC_ClientDisconnect ipc_ClientDisconnect;
 		Request_IPC_Ping ipc_Ping;
@@ -319,6 +373,12 @@ struct Request {
 		Request_DeviceManipulation_MotionCompensationMode dm_MotionCompensationMode;
 		Request_DeviceManipulation_TriggerHapticPulse dm_triggerHapticPulse;
 		Request_DeviceManipulation_SetMotionCompensationProperties dm_SetMotionCompensationProperties;
+		Request_InputRemapping_SetDigitalRemapping ir_SetDigitalRemapping;
+		Request_InputRemapping_GetDigitalRemapping ir_GetDigitalRemapping;
+		Request_InputRemapping_SetAnalogRemapping ir_SetAnalogRemapping;
+		Request_InputRemapping_GetAnalogRemapping ir_GetAnalogRemapping;
+		Request_InputRemapping_SetTouchpadEmulationFixEnabled ir_SetTouchPadEmulationFixEnabled;
+		MsgUnion() {}
 	} msg;
 };
 
@@ -361,8 +421,8 @@ struct Reply_DeviceManipulation_GetDeviceInfo {
 	uint32_t deviceId;
 	vr::ETrackedDeviceClass deviceClass;
 	int deviceMode;
+	uint32_t refDeviceId;
 	bool offsetsEnabled;
-	bool buttonMappingEnabled;
 	bool redirectSuspended;
 };
 
@@ -379,6 +439,18 @@ struct Reply_DeviceManipulation_GetDeviceOffsets {
 	vr::HmdVector3d_t deviceTranslationOffset;
 };
 
+struct Reply_InputRemapping_GetDigitalRemapping {
+	uint32_t deviceId;
+	uint32_t buttonId;
+	DigitalInputRemapping remapData;
+};
+
+struct Reply_InputRemapping_GetAnalogRemapping {
+	uint32_t deviceId;
+	uint32_t axisId;
+	AnalogInputRemapping remapData;
+};
+
 
 struct Reply {
 	Reply() {}
@@ -391,7 +463,7 @@ struct Reply {
 	uint64_t timestamp = 0; // milliseconds since epoch
 	uint32_t messageId;
 	ReplyStatus status;
-	union {
+	union MsgUnion {
 		Reply_IPC_ClientConnect ipc_ClientConnect;
 		Reply_IPC_Ping ipc_Ping;
 		Reply_VirtualDevices_GetDeviceCount vd_GetDeviceCount;
@@ -401,6 +473,9 @@ struct Reply {
 		Reply_VirtualDevices_AddDevice vd_AddDevice;
 		Reply_DeviceManipulation_GetDeviceInfo dm_deviceInfo;
 		Reply_DeviceManipulation_GetDeviceOffsets dm_deviceOffsets;
+		Reply_InputRemapping_GetDigitalRemapping ir_getDigitalRemapping;
+		Reply_InputRemapping_GetAnalogRemapping ir_getAnalogRemapping;
+		MsgUnion() {}
 	} msg;
 };
 

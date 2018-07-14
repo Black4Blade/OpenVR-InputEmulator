@@ -88,7 +88,10 @@ namespace vr {
 namespace vrinputemulator {
 
 class vrinputemulator_exception : public std::runtime_error {
+public:
+	const int errorcode = 0;
 	using std::runtime_error::runtime_error;
+	vrinputemulator_exception(const std::string& msg, int code) : std::runtime_error(msg), errorcode(code) {}
 };
 
 class vrinputemulator_connectionerror : public vrinputemulator_exception {
@@ -181,11 +184,20 @@ public:
 	void setDeviceFakeDisconnectedMode(uint32_t deviceId, bool modal = true);
 	void setDeviceRedictMode(uint32_t deviceId, uint32_t target, bool modal = true);
 	void setDeviceSwapMode(uint32_t deviceId, uint32_t target, bool modal = true);
-	void setDeviceMotionCompensationMode(uint32_t deviceId, uint32_t velAccMode = 0, bool modal = true);
+	void setDeviceMotionCompensationMode(uint32_t deviceId, MotionCompensationVelAccMode velAccMode = MotionCompensationVelAccMode::Disabled, bool modal = true);
 
-	void setMotionVelAccCompensationMode(uint32_t velAccMode, bool modal = true);
+	void setMotionVelAccCompensationMode(MotionCompensationVelAccMode velAccMode, bool modal = true);
+	void setMotionCompensationKalmanProcessNoise(double variance, bool modal = true);
+	void setMotionCompensationKalmanObservationNoise(double variance, bool modal = true);
+	void setMotionCompensationMovingAverageWindow(unsigned window, bool modal = true);
 
 	void triggerHapticPulse(uint32_t deviceId, uint32_t axisId, uint16_t durationMicroseconds, bool directMode, bool modal = true);
+
+	void setDigitalInputRemapping(uint32_t deviceId, uint32_t buttonId, const DigitalInputRemapping& remapping, bool modal = true);
+	DigitalInputRemapping getDigitalInputRemapping(uint32_t deviceId, uint32_t buttonId);
+
+	void setAnalogInputRemapping(uint32_t deviceId, uint32_t axisId, const AnalogInputRemapping& remapping, bool modal = true);
+	AnalogInputRemapping getAnalogInputRemapping(uint32_t deviceId, uint32_t axisId);
 
 private:
 	std::recursive_mutex _mutex;
